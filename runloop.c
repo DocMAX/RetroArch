@@ -3598,9 +3598,16 @@ bool runloop_environment_cb(unsigned cmd, void *data)
             }
          }
          break;
-      default:
-         RARCH_LOG("[Environ] UNSUPPORTED (#%u).\n", cmd);
-         return false;
+   case 0x80000005: /* RETRO_ENVIRONMENT_SUSPEND_INPUT */
+      runloop_st->input_suspended = true;
+      break;
+   case 0x80000006: /* RETRO_ENVIRONMENT_RESUME_INPUT */
+      runloop_st->input_suspended = false;
+      break;
+
+   default:
+      RARCH_LOG("[Environ] UNSUPPORTED (#%u).\n", cmd);
+      return false;
    }
 
    return true;

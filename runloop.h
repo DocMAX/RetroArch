@@ -301,6 +301,7 @@ struct runloop
 
    bool missing_bios;
    bool perfcnt_enable;
+   bool input_suspended;
 };
 
 typedef struct runloop runloop_state_t;
