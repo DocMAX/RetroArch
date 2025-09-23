@@ -6583,6 +6583,22 @@ MSG_HASH(
    "manual_content_scan_validate_entries"
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_FILE_PATTERNS,
+   "manual_content_scan_file_patterns"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_TITLE_PATTERN,
+   "manual_content_scan_title_pattern"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_SCAN_DEPTH,
+   "manual_content_scan_scan_depth"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL,
+   "manual_content_scan_use_dirname_for_label"
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_START,
    "manual_content_scan_start"
    )

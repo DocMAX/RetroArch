@@ -6780,6 +6780,30 @@ static unsigned menu_displaylist_parse_manual_content_scan_list(
          false) == 0)
       count++;
 
+   /* File patterns */
+   if (MENU_DISPLAYLIST_PARSE_SETTINGS_ENUM(info_list,
+         MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_FILE_PATTERNS, PARSE_ONLY_STRING,
+         false) == 0)
+      count++;
+
+   /* Title pattern */
+   if (MENU_DISPLAYLIST_PARSE_SETTINGS_ENUM(info_list,
+         MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_TITLE_PATTERN, PARSE_ONLY_STRING,
+         false) == 0)
+      count++;
+
+   /* Scan depth */
+   if (MENU_DISPLAYLIST_PARSE_SETTINGS_ENUM(info_list,
+         MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_SCAN_DEPTH, PARSE_ONLY_INT,
+         false) == 0)
+      count++;
+
+   /* Use dirname for label */
+   if (MENU_DISPLAYLIST_PARSE_SETTINGS_ENUM(info_list,
+         MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL, PARSE_ONLY_BOOL,
+         false) == 0)
+      count++;
+
    /* Start scan */
    if (menu_entries_append(info_list,
          msg_hash_to_str(MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_START),

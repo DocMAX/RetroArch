@@ -24653,6 +24653,66 @@ static bool setting_append_list(
                general_read_handler,
                SD_FLAG_NONE);
 
+         CONFIG_STRING(
+               list, list_info,
+               manual_content_scan_get_file_patterns_ptr(),
+               manual_content_scan_get_file_patterns_size(),
+               MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_FILE_PATTERNS,
+               MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_FILE_PATTERNS,
+               "",
+               &group_info,
+               &subgroup_info,
+               parent_group,
+               general_write_handler,
+               general_read_handler);
+         SETTINGS_DATA_LIST_CURRENT_ADD_FLAGS(list, list_info, SD_FLAG_ALLOW_INPUT);
+         (*list)[list_info->index - 1].ui_type       = ST_UI_TYPE_STRING_LINE_EDIT;
+         (*list)[list_info->index - 1].action_start  = setting_generic_action_start_default;
+
+         CONFIG_STRING(
+               list, list_info,
+               manual_content_scan_get_title_pattern_ptr(),
+               manual_content_scan_get_title_pattern_size(),
+               MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_TITLE_PATTERN,
+               MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_TITLE_PATTERN,
+               "",
+               &group_info,
+               &subgroup_info,
+               parent_group,
+               general_write_handler,
+               general_read_handler);
+         SETTINGS_DATA_LIST_CURRENT_ADD_FLAGS(list, list_info, SD_FLAG_ALLOW_INPUT);
+         (*list)[list_info->index - 1].ui_type       = ST_UI_TYPE_STRING_LINE_EDIT;
+         (*list)[list_info->index - 1].action_start  = setting_generic_action_start_default;
+
+         CONFIG_INT(
+               list, list_info,
+               manual_content_scan_get_scan_depth_ptr(),
+               MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_SCAN_DEPTH,
+               MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_SCAN_DEPTH,
+               0,
+               &group_info,
+               &subgroup_info,
+               parent_group,
+               general_write_handler,
+               general_read_handler);
+         menu_settings_list_current_add_range(list, list_info, 0, 10, 1, true, true);
+
+         CONFIG_BOOL(
+               list, list_info,
+               manual_content_scan_get_use_dirname_for_label_ptr(),
+               MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL,
+               MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL,
+               false,
+               MENU_ENUM_LABEL_VALUE_OFF,
+               MENU_ENUM_LABEL_VALUE_ON,
+               &group_info,
+               &subgroup_info,
+               parent_group,
+               general_write_handler,
+               general_read_handler,
+               SD_FLAG_NONE);
+
          END_SUB_GROUP(list, list_info, parent_group);
          END_GROUP(list, list_info, parent_group);
          break;

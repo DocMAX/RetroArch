@@ -33,6 +33,8 @@
 #include "../msg_hash.h"
 #include "../playlist.h"
 #include "../manual_content_scan.h"
+#include "../configuration.h"
+#include "../verbosity.h"
 
 #ifdef RARCH_INTERNAL
 #ifdef HAVE_MENU
@@ -212,17 +214,46 @@ static void task_manual_content_scan_handler(retro_task_t *task)
                      manual_scan->task_config->file_exts, "|");
 
             /* Get content list */
-            if (!(manual_scan->content_list
-                     = manual_content_scan_get_content_list(
-                        manual_scan->task_config)))
             {
-               const char *_msg = msg_hash_to_str(MSG_MANUAL_CONTENT_SCAN_INVALID_CONTENT);
-               runloop_msg_queue_push(_msg, strlen(_msg), 1, 100, true, NULL,\
-                     MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
-               goto task_finished;
+               settings_t *settings = config_get_ptr();
+               bool show_hidden_files = settings ? settings->bools.show_hidden_files : false;
+               manual_scan->content_list = manual_content_scan_get_content_list(
+                     manual_scan->task_config, show_hidden_files);
+               if (!manual_scan->content_list)
+               {
+                  const char *_msg = msg_hash_to_str(MSG_MANUAL_CONTENT_SCAN_INVALID_CONTENT);
+                  runloop_msg_queue_push(_msg, strlen(_msg), 1, 100, true, NULL, MESSAGE_QUEUE_ICON_DEFAULT, MESSAGE_QUEUE_CATEGORY_INFO);
+                  goto task_finished;
+               }
+
+               manual_scan->content_list_size = manual_scan->content_list->size;
+               RARCH_LOG("[Manual scan] Found %d files in directory.\n", manual_scan->content_list_size);
             }
 
-            manual_scan->content_list_size = manual_scan->content_list->size;
+            /* Filter content list by core support if core is set */
+            if (!string_is_empty(manual_scan->task_config->core_path))
+            {
+               core_info_t *core_info = NULL;
+               if (core_info_find(manual_scan->task_config->core_path, &core_info))
+               {
+                  struct string_list *filtered_list = string_list_new();
+                  size_t i;
+                  size_t supported_count = 0;
+                  for (i = 0; i < manual_scan->content_list->size; i++)
+                  {
+                     const char *path = manual_scan->content_list->elems[i].data;
+                     if (core_info_does_support_file(core_info, path))
+                     {
+                        string_list_append(filtered_list, path, manual_scan->content_list->elems[i].attr);
+                        supported_count++;
+                     }
+                  }
+                  string_list_free(manual_scan->content_list);
+                  manual_scan->content_list = filtered_list;
+                  manual_scan->content_list_size = manual_scan->content_list->size;
+                  RARCH_LOG("[Manual scan] %d files supported by core.\n", supported_count);
+               }
+            }
 
             /* Load DAT file, if required */
             if (!string_is_empty(manual_scan->task_config->dat_file_path))
@@ -270,7 +301,7 @@ static void task_manual_content_scan_handler(retro_task_t *task)
             playlist_set_scan_dat_file_path(manual_scan->playlist,
                   manual_scan->task_config->dat_file_path);
             playlist_set_scan_search_recursively(manual_scan->playlist,
-                  manual_scan->task_config->search_recursively);
+                  manual_scan->task_config->scan_depth > 0);
             playlist_set_scan_search_archives(manual_scan->playlist,
                   manual_scan->task_config->search_archives);
             playlist_set_scan_filter_dat_content(manual_scan->playlist,

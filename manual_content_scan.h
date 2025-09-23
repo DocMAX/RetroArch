@@ -89,10 +89,13 @@ typedef struct
    char playlist_file[PATH_MAX_LENGTH];
    char core_path[PATH_MAX_LENGTH];
    char file_exts[PATH_MAX_LENGTH];
+   char file_patterns[PATH_MAX_LENGTH];
+   char title_pattern[PATH_MAX_LENGTH];
    char dat_file_path[PATH_MAX_LENGTH];
    bool core_set;
    bool file_exts_custom_set;
-   bool search_recursively;
+   int scan_depth;
+   bool use_dirname_for_label;
    bool search_archives;
    bool filter_dat_content;
    bool overwrite_playlist;
@@ -138,8 +141,32 @@ char *manual_content_scan_get_dat_file_path_ptr(void);
 size_t manual_content_scan_get_dat_file_path_size(void);
 
 /* Returns a pointer to the internal
- * 'search_recursively' bool */
+ * 'file_patterns' string */
+char *manual_content_scan_get_file_patterns_ptr(void);
+
+/* Returns size of the internal
+ * 'file_patterns' string */
+size_t manual_content_scan_get_file_patterns_size(void);
+
+/* Returns a pointer to the internal
+ * 'title_pattern' string */
+char *manual_content_scan_get_title_pattern_ptr(void);
+
+/* Returns size of the internal
+ * 'title_pattern' string */
+size_t manual_content_scan_get_title_pattern_size(void);
+
+/* Returns a pointer to the internal
+ * 'scan_depth' int */
+int *manual_content_scan_get_scan_depth_ptr(void);
+
+/* Returns a pointer to the internal
+ * 'search_recursively' bool (for compatibility) */
 bool *manual_content_scan_get_search_recursively_ptr(void);
+
+/* Returns a pointer to the internal
+ * 'use_dirname_for_label' bool */
+bool *manual_content_scan_get_use_dirname_for_label_ptr(void);
 
 /* Returns a pointer to the internal
  * 'search_archives' bool */
@@ -264,7 +291,7 @@ bool manual_content_scan_get_task_config(
  * > Returns NULL in the event of failure
  * > Returned string list must be free()'d */
 struct string_list *manual_content_scan_get_content_list(
-      manual_content_scan_task_config_t *task_config);
+      manual_content_scan_task_config_t *task_config, bool show_hidden_files);
 
 /* Adds specified content to playlist, if not already
  * present */

@@ -82,6 +82,7 @@ typedef struct
    char *systemname;
    char *system_id;
    char *supported_extensions;
+   char *valid_patterns;
    char *authors;
    char *permissions;
    char *licenses;
@@ -94,6 +95,7 @@ typedef struct
    struct string_list *databases_list;
    struct string_list *note_list;
    struct string_list *supported_extensions_list;
+   struct string_list *valid_patterns_list;
    struct string_list *authors_list;
    struct string_list *permissions_list;
    struct string_list *licenses_list;
@@ -196,6 +198,8 @@ bool core_info_load(const char *core_path);
 bool core_info_database_supports_content_path(const char *database_path, const char *path);
 
 bool core_info_database_match_archive_member(const char *database_path);
+
+bool core_info_does_support_file(const core_info_t *core, const char *path);
 
 void core_info_qsort(core_info_list_t *core_info_list, enum core_info_list_qsort_type qsort_type);
 

@@ -16,6 +16,7 @@
  */
 
 #include <compat/strl.h>
+#include <compat/fnmatch.h>
 #include <string/stdstring.h>
 #include <file/config_file.h>
 #include <file/file_path.h>
@@ -218,6 +219,13 @@ static bool CCJSONObjectMemberHandler(void *context,
                         pCtx->current_entry_bool_val  = &pCtx->core_info->single_purpose;
                      else if (string_is_equal(pValue, "savestate_support_level"))
                         pCtx->current_entry_uint_val  = &pCtx->core_info->savestate_support_level;
+                     break;
+                  case 'v':
+                     if (string_is_equal(pValue, "valid_patterns"))
+                     {
+                        pCtx->current_string_val      = &pCtx->core_info->valid_patterns;
+                        pCtx->current_string_list_val = &pCtx->core_info->valid_patterns_list;
+                     }
                      break;
                }
             }
@@ -441,6 +449,7 @@ static void core_info_copy(core_info_t *src, core_info_t *dst)
    dst->systemname                = src->systemname           ? strdup(src->systemname)           : NULL;
    dst->system_id                 = src->system_id            ? strdup(src->system_id)            : NULL;
    dst->supported_extensions      = src->supported_extensions ? strdup(src->supported_extensions) : NULL;
+   dst->valid_patterns            = src->valid_patterns       ? strdup(src->valid_patterns)       : NULL;
    dst->authors                   = src->authors              ? strdup(src->authors)              : NULL;
    dst->permissions               = src->permissions          ? strdup(src->permissions)          : NULL;
    dst->licenses                  = src->licenses             ? strdup(src->licenses)             : NULL;
@@ -454,6 +463,7 @@ static void core_info_copy(core_info_t *src, core_info_t *dst)
    dst->databases_list            = src->databases_list            ? string_list_clone(src->databases_list)            : NULL;
    dst->note_list                 = src->note_list                 ? string_list_clone(src->note_list)                 : NULL;
    dst->supported_extensions_list = src->supported_extensions_list ? string_list_clone(src->supported_extensions_list) : NULL;
+   dst->valid_patterns_list       = src->valid_patterns_list       ? string_list_clone(src->valid_patterns_list)       : NULL;
    dst->authors_list              = src->authors_list              ? string_list_clone(src->authors_list)              : NULL;
    dst->permissions_list          = src->permissions_list          ? string_list_clone(src->permissions_list)          : NULL;
    dst->licenses_list             = src->licenses_list             ? string_list_clone(src->licenses_list)             : NULL;
@@ -526,6 +536,9 @@ static void core_info_transfer(core_info_t *src, core_info_t *dst)
    dst->supported_extensions      = src->supported_extensions;
    src->supported_extensions      = NULL;
 
+   dst->valid_patterns            = src->valid_patterns;
+   src->valid_patterns            = NULL;
+
    dst->authors                   = src->authors;
    src->authors                   = NULL;
 
@@ -561,6 +574,9 @@ static void core_info_transfer(core_info_t *src, core_info_t *dst)
 
    dst->supported_extensions_list = src->supported_extensions_list;
    src->supported_extensions_list = NULL;
+
+   dst->valid_patterns_list       = src->valid_patterns_list;
+   src->valid_patterns_list       = NULL;
 
    dst->authors_list              = src->authors_list;
    src->authors_list              = NULL;
@@ -969,6 +985,14 @@ static bool core_info_cache_write(core_info_cache_list_t *list, const char *info
       rjsonwriter_raw(writer, ":", 1);
       rjsonwriter_raw(writer, " ", 1);
       rjsonwriter_add_string(writer, info->supported_extensions);
+      rjsonwriter_raw(writer, ",", 1);
+      rjsonwriter_raw(writer, "\n", 1);
+
+      rjsonwriter_add_spaces(writer, 6);
+      rjsonwriter_add_string(writer, "valid_patterns");
+      rjsonwriter_raw(writer, ":", 1);
+      rjsonwriter_raw(writer, " ", 1);
+      rjsonwriter_add_string(writer, info->valid_patterns);
       rjsonwriter_raw(writer, ",", 1);
       rjsonwriter_raw(writer, "\n", 1);
 
@@ -1744,6 +1768,17 @@ static void core_info_parse_config_file(
             string_split(info->supported_extensions, "|");
    }
 
+   entry = config_get_entry(conf, "valid_patterns");
+
+   if (entry && !string_is_empty(entry->value))
+   {
+      info->valid_patterns      = entry->value;
+      entry->value              = NULL;
+
+      info->valid_patterns_list =
+            string_split(info->valid_patterns, "|");
+   }
+
    entry = config_get_entry(conf, "authors");
 
    if (entry && !string_is_empty(entry->value))
@@ -1939,6 +1974,7 @@ static void core_info_free(core_info_t* info)
    free(info->display_name);
    free(info->display_version);
    free(info->supported_extensions);
+   free(info->valid_patterns);
    free(info->authors);
    free(info->permissions);
    free(info->licenses);
@@ -1948,6 +1984,7 @@ static void core_info_free(core_info_t* info)
    free(info->required_hw_api);
    free(info->description);
    string_list_free(info->supported_extensions_list);
+   string_list_free(info->valid_patterns_list);
    string_list_free(info->authors_list);
    string_list_free(info->note_list);
    string_list_free(info->permissions_list);
@@ -2206,34 +2243,72 @@ bool core_info_list_get_info(core_info_list_t *core_info_list,
 static bool core_info_does_support_any_file(const core_info_t *core,
       const struct string_list *list)
 {
-   size_t i;
-   if (!list || !core || !core->supported_extensions_list)
-      return false;
+    size_t i, j;
+    if (!list || !core)
+       return false;
 
-   for (i = 0; i < list->size; i++)
-      if (string_list_find_elem_prefix(core->supported_extensions_list,
-               ".", path_get_extension(list->elems[i].data)))
-         return true;
-   return false;
+    /* Check patterns first */
+    if (core->valid_patterns_list)
+    {
+       for (i = 0; i < list->size; i++)
+       {
+          const char *filename = path_basename(list->elems[i].data);
+          for (j = 0; j < core->valid_patterns_list->size; j++)
+          {
+             const char *pattern = core->valid_patterns_list->elems[j].data;
+             if (!string_is_empty(pattern) && rl_fnmatch(pattern, filename, 0) == 0)
+                return true;
+          }
+       }
+    }
+
+    /* Fallback to extensions */
+    if (!core->supported_extensions_list)
+       return false;
+
+    for (i = 0; i < list->size; i++)
+       if (string_list_find_elem_prefix(core->supported_extensions_list,
+                ".", path_get_extension(list->elems[i].data)))
+          return true;
+    return false;
 }
 #endif
 
-static bool core_info_does_support_file(
+bool core_info_does_support_file(
       const core_info_t *core, const char *path)
 {
-   const char *basename, *ext;
-   if (!core || !core->supported_extensions_list)
-      return false;
-   if (string_is_empty(path))
-      return false;
-   basename = path_basename(path);
-   /* if a core has / in its list of supported extensions, the core
-      supports loading of directories on the host file system */
-   if (string_is_empty(basename))
-      return string_list_find_elem(core->supported_extensions_list, "/");
-   ext = strrchr(basename, '.');
-   return string_list_find_elem_prefix(
-         core->supported_extensions_list, ".", (ext ? ext + 1 : ""));
+    const char *basename, *ext;
+    size_t i;
+    if (!core)
+       return false;
+    if (string_is_empty(path))
+       return false;
+    basename = path_basename(path);
+    /* if a core has / in its list of supported extensions, the core
+       supports loading of directories on the host file system */
+    if (string_is_empty(basename))
+       return (core->supported_extensions_list &&
+               string_list_find_elem(core->supported_extensions_list, "/")) ||
+              (core->valid_patterns_list &&
+               string_list_find_elem(core->valid_patterns_list, "/"));
+
+    /* Check patterns first, as they are more specific */
+    if (core->valid_patterns_list)
+    {
+       for (i = 0; i < core->valid_patterns_list->size; i++)
+       {
+          const char *pattern = core->valid_patterns_list->elems[i].data;
+          if (!string_is_empty(pattern) && rl_fnmatch(pattern, basename, 0) == 0)
+             return true;
+       }
+    }
+
+    /* Fallback to extensions */
+    if (!core->supported_extensions_list)
+       return false;
+    ext = strrchr(basename, '.');
+    return string_list_find_elem_prefix(
+          core->supported_extensions_list, ".", (ext ? ext + 1 : ""));
 }
 
 /* qsort_r() is not in standard C, sadly. */
@@ -2323,6 +2398,7 @@ bool core_info_init_current_core(void)
    current->systemname                    = NULL;
    current->system_id                     = NULL;
    current->supported_extensions          = NULL;
+   current->valid_patterns                = NULL;
    current->authors                       = NULL;
    current->permissions                   = NULL;
    current->licenses                      = NULL;
@@ -2335,6 +2411,7 @@ bool core_info_init_current_core(void)
    current->databases_list                = NULL;
    current->note_list                     = NULL;
    current->supported_extensions_list     = NULL;
+   current->valid_patterns_list           = NULL;
    current->authors_list                  = NULL;
    current->permissions_list              = NULL;
    current->licenses_list                 = NULL;
@@ -2608,9 +2685,32 @@ bool core_info_database_supports_content_path(
       for (i = 0; i < p_coreinfo->curr_list->count; i++)
       {
          const core_info_t *info = &p_coreinfo->curr_list->list[i];
+         bool extension_match = false;
+         bool pattern_match = false;
 
-         if (!string_list_find_elem(info->supported_extensions_list,
-                  path_get_extension(path)))
+         /* Check extension */
+         if (info->supported_extensions_list &&
+             string_list_find_elem(info->supported_extensions_list,
+               path_get_extension(path)))
+            extension_match = true;
+
+         /* Check pattern */
+         if (info->valid_patterns_list)
+         {
+            size_t j;
+            const char *basename = path_basename(path);
+            for (j = 0; j < info->valid_patterns_list->size; j++)
+            {
+               const char *pattern = info->valid_patterns_list->elems[j].data;
+               if (!string_is_empty(pattern) && rl_fnmatch(pattern, basename, 0) == 0)
+               {
+                  pattern_match = true;
+                  break;
+               }
+            }
+         }
+
+         if (!extension_match && !pattern_match)
             continue;
 
          if (!string_list_find_elem(info->databases_list, database))

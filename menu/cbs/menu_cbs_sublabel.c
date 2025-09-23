@@ -1423,6 +1423,10 @@ DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_dat_file,       
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_dat_file_filter,           MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_DAT_FILE_FILTER)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_overwrite,                 MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_OVERWRITE)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_validate_entries,          MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_VALIDATE_ENTRIES)
+DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_file_patterns,             MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_FILE_PATTERNS)
+DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_title_pattern,             MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_TITLE_PATTERN)
+DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_scan_depth,                MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_SCAN_DEPTH)
+DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_use_dirname_for_label,     MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_manual_content_scan_start,                     MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_START)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_core_create_backup,                            MENU_ENUM_SUBLABEL_CORE_CREATE_BACKUP)
 DEFAULT_SUBLABEL_MACRO(action_bind_sublabel_core_restore_backup_list,                      MENU_ENUM_SUBLABEL_CORE_RESTORE_BACKUP_LIST)
@@ -5826,6 +5830,18 @@ int menu_cbs_init_bind_sublabel(menu_file_list_cbs_t *cbs,
             break;
          case MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_VALIDATE_ENTRIES:
             BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_manual_content_scan_validate_entries);
+            break;
+         case MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_FILE_PATTERNS:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_manual_content_scan_file_patterns);
+            break;
+         case MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_TITLE_PATTERN:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_manual_content_scan_title_pattern);
+            break;
+         case MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_SCAN_DEPTH:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_manual_content_scan_scan_depth);
+            break;
+         case MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL:
+            BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_manual_content_scan_use_dirname_for_label);
             break;
          case MENU_ENUM_LABEL_MANUAL_CONTENT_SCAN_START:
             BIND_ACTION_SUBLABEL(cbs, action_bind_sublabel_manual_content_scan_start);

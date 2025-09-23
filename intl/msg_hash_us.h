@@ -8890,6 +8890,38 @@ MSG_HASH(
    "When enabled, entries in any existing playlist will be verified before scanning new content. Entries referring to missing content and/or files with invalid extensions will be removed."
    )
 MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_FILE_PATTERNS,
+   "File Patterns"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_FILE_PATTERNS,
+   "Specify file patterns to match when scanning content. Separate multiple patterns with semicolons (;). Example: *.zip;*.7z;roms/*"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_TITLE_PATTERN,
+   "Title Pattern"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_TITLE_PATTERN,
+   "Specify a pattern to extract titles from filenames. Use * as wildcard. Example: 'Game Name (*)' extracts 'Game Name' from 'Game Name (USA).zip'"
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_SCAN_DEPTH,
+   "Scan Depth"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_SCAN_DEPTH,
+   "Maximum directory depth to scan recursively. Set to 0 for unlimited depth."
+   )
+MSG_HASH(
+   MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL,
+   "Use Directory Name for Label"
+   )
+MSG_HASH(
+   MENU_ENUM_SUBLABEL_MANUAL_CONTENT_SCAN_USE_DIRNAME_FOR_LABEL,
+   "When enabled, use the parent directory name instead of the filename for playlist entry labels."
+   )
+MSG_HASH(
    MENU_ENUM_LABEL_VALUE_MANUAL_CONTENT_SCAN_START,
    "Start Scan"
    )

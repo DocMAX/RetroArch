@@ -45,6 +45,8 @@ typedef struct
    char core_path[PATH_MAX_LENGTH];
    char file_exts_core[PATH_MAX_LENGTH];
    char file_exts_custom[PATH_MAX_LENGTH];
+   char file_patterns[PATH_MAX_LENGTH];
+   char title_pattern[PATH_MAX_LENGTH];
    char dat_file_path[PATH_MAX_LENGTH];
    char content_dir[DIR_MAX_LENGTH];
    char system_name_content_dir[DIR_MAX_LENGTH];
@@ -52,7 +54,8 @@ typedef struct
    char system_name_custom[NAME_MAX_LENGTH];
    char core_name[NAME_MAX_LENGTH];
 
-   bool search_recursively;
+   int scan_depth;
+   bool use_dirname_for_label;
    bool search_archives;
    bool filter_dat_content;
    bool overwrite_playlist;
@@ -70,22 +73,25 @@ typedef struct
  *   are not thread safe, but we only access them when pushing a
  *   task, not in the task thread itself, so all is well) */
 static scan_settings_t scan_settings = {
-   MANUAL_CONTENT_SCAN_SYSTEM_NAME_CONTENT_DIR, /* system_name_type */
-   MANUAL_CONTENT_SCAN_CORE_DETECT,             /* core_type */
-   "",                                          /* content_dir */
-   "",                                          /* system_name_content_dir */
-   "",                                          /* system_name_database */
-   "",                                          /* system_name_custom */
-   "",                                          /* core_name */
-   "",                                          /* core_path */
-   "",                                          /* file_exts_core */
-   "",                                          /* file_exts_custom */
-   "",                                          /* dat_file_path */
-   true,                                        /* search_recursively */
-   false,                                       /* search_archives */
-   false,                                       /* filter_dat_content */
-   false,                                       /* overwrite_playlist */
-   false                                        /* validate_entries */
+    MANUAL_CONTENT_SCAN_SYSTEM_NAME_CONTENT_DIR, /* system_name_type */
+    MANUAL_CONTENT_SCAN_CORE_DETECT,             /* core_type */
+    "",                                          /* content_dir */
+    "",                                          /* system_name_content_dir */
+    "",                                          /* system_name_database */
+    "",                                          /* system_name_custom */
+    "",                                          /* core_name */
+    "",                                          /* core_path */
+    "",                                          /* file_exts_core */
+    "",                                          /* file_exts_custom */
+    "",                                          /* file_patterns */
+    "",                                          /* title_pattern */
+    "",                                          /* dat_file_path */
+    1,                                           /* scan_depth */
+    true,                                        /* use_dirname_for_label */
+    false,                                       /* search_archives */
+    false,                                       /* filter_dat_content */
+    false,                                       /* overwrite_playlist */
+    false                                        /* validate_entries */
 };
 
 /*****************/
@@ -144,10 +150,54 @@ size_t manual_content_scan_get_dat_file_path_size(void)
 }
 
 /* Returns a pointer to the internal
- * 'search_recursively' bool */
+ * 'file_patterns' string */
+char *manual_content_scan_get_file_patterns_ptr(void)
+{
+   return scan_settings.file_patterns;
+}
+
+/* Returns size of the internal
+ * 'file_patterns' string */
+size_t manual_content_scan_get_file_patterns_size(void)
+{
+   return sizeof(scan_settings.file_patterns);
+}
+
+/* Returns a pointer to the internal
+ * 'title_pattern' string */
+char *manual_content_scan_get_title_pattern_ptr(void)
+{
+   return scan_settings.title_pattern;
+}
+
+/* Returns size of the internal
+ * 'title_pattern' string */
+size_t manual_content_scan_get_title_pattern_size(void)
+{
+   return sizeof(scan_settings.title_pattern);
+}
+
+/* Returns a pointer to the internal
+ * 'scan_depth' int */
+int *manual_content_scan_get_scan_depth_ptr(void)
+{
+   return &scan_settings.scan_depth;
+}
+
+/* Returns a pointer to the internal
+ * 'search_recursively' bool (for compatibility) */
 bool *manual_content_scan_get_search_recursively_ptr(void)
 {
-   return &scan_settings.search_recursively;
+   static bool search_recursively_compat = true;
+   search_recursively_compat = scan_settings.scan_depth > 0;
+   return &search_recursively_compat;
+}
+
+/* Returns a pointer to the internal
+ * 'use_dirname_for_label' bool */
+bool *manual_content_scan_get_use_dirname_for_label_ptr(void)
+{
+   return &scan_settings.use_dirname_for_label;
 }
 
 /* Returns a pointer to the internal
@@ -508,7 +558,7 @@ enum manual_content_scan_playlist_refresh_status
    const char *core_name        = NULL;
    const char *file_exts        = NULL;
    const char *dat_file_path    = NULL;
-   bool search_recursively      = false;
+   int scan_depth               = 0;
    bool search_archives         = false;
    bool filter_dat_content      = false;
    bool overwrite_playlist      = false;
@@ -531,7 +581,7 @@ enum manual_content_scan_playlist_refresh_status
    file_exts          = playlist_get_scan_file_exts(playlist);
    dat_file_path      = playlist_get_scan_dat_file_path(playlist);
 
-   search_recursively = playlist_get_scan_search_recursively(playlist);
+   scan_depth         = playlist_get_scan_search_recursively(playlist) ? 1 : 0;
    search_archives    = playlist_get_scan_search_archives(playlist);
    filter_dat_content = playlist_get_scan_filter_dat_content(playlist);
    overwrite_playlist = playlist_get_scan_overwrite_playlist(playlist);
@@ -668,8 +718,8 @@ enum manual_content_scan_playlist_refresh_status
       }
    }
 
-   /* Set remaining boolean parameters */
-   scan_settings.search_recursively = search_recursively;
+   /* Set remaining parameters */
+   scan_settings.scan_depth         = scan_depth;
    scan_settings.search_archives    = search_archives;
    scan_settings.filter_dat_content = filter_dat_content;
    scan_settings.overwrite_playlist = overwrite_playlist;
@@ -916,6 +966,8 @@ bool manual_content_scan_get_task_config(
    task_config->core_name[0]     = '\0';
    task_config->core_path[0]     = '\0';
    task_config->file_exts[0]     = '\0';
+   task_config->file_patterns[0] = '\0';
+   task_config->title_pattern[0] = '\0';
    task_config->dat_file_path[0] = '\0';
 
    /* Get content directory */
@@ -1046,8 +1098,22 @@ bool manual_content_scan_get_task_config(
             sizeof(task_config->dat_file_path));
    }
 
-   /* Copy 'search recursively' setting */
-   task_config->search_recursively = scan_settings.search_recursively;
+   /* Copy 'file patterns' setting */
+   if (!string_is_empty(scan_settings.file_patterns))
+      strlcpy(
+            task_config->file_patterns,
+            scan_settings.file_patterns,
+            sizeof(task_config->file_patterns));
+   /* Copy 'title pattern' setting */
+   if (!string_is_empty(scan_settings.title_pattern))
+      strlcpy(
+            task_config->title_pattern,
+            scan_settings.title_pattern,
+            sizeof(task_config->title_pattern));
+   /* Copy 'scan depth' setting */
+   task_config->scan_depth         = scan_settings.scan_depth;
+   /* Copy 'use dirname for label' setting */
+   task_config->use_dirname_for_label = scan_settings.use_dirname_for_label;
    /* Copy 'search inside archives' setting */
    task_config->search_archives    = scan_settings.search_archives;
    /* Copy 'DAT file filter' setting */
@@ -1065,7 +1131,7 @@ bool manual_content_scan_get_task_config(
  * > Returns NULL in the event of failure
  * > Returned string list must be free()'d */
 struct string_list *manual_content_scan_get_content_list(
-      manual_content_scan_task_config_t *task_config)
+      manual_content_scan_task_config_t *task_config, bool show_hidden_files)
 {
    bool filter_exts;
    bool include_compressed;
@@ -1092,15 +1158,77 @@ struct string_list *manual_content_scan_get_content_list(
     *   then compressed files must of course be included */
    include_compressed = (!filter_exts || task_config->search_archives);
 
-   /* Get directory listing
-    * > Exclude directories and hidden files */
+   /* Special handling for pattern-based scanning */
+   if (!filter_exts && !string_is_empty(task_config->file_patterns) && task_config->scan_depth > 0)
+   {
+      /* Manually scan subdirectories for specified patterns */
+      struct string_list *content_list = string_list_new();
+      if (!content_list)
+         return NULL;
+
+      /* Get list of subdirectories */
+      dir_list = dir_list_new(
+            task_config->content_dir,
+            NULL, /* exts */
+            true, /* include_dirs */
+            show_hidden_files, /* include_hidden */
+            false, /* include_compressed */
+            task_config->scan_depth > 1  /* recursive */
+      );
+
+      if (dir_list)
+      {
+         size_t i;
+         for (i = 0; i < dir_list->size; i++)
+         {
+            const char *subdir_path = dir_list->elems[i].data;
+            char pattern_path[PATH_MAX_LENGTH];
+
+            if (!path_is_directory(subdir_path))
+               continue;
+
+            /* Check for pattern file in this subdirectory */
+            fill_pathname_join_special(pattern_path, subdir_path, task_config->file_patterns, sizeof(pattern_path));
+
+            if (path_is_valid(pattern_path))
+            {
+               union string_list_elem_attr attr;
+               attr.i = RARCH_PLAIN_FILE; /* Assume plain file */
+               string_list_append(content_list, pattern_path, attr);
+            }
+         }
+         string_list_free(dir_list);
+         dir_list = NULL;
+      }
+
+      /* Also check for pattern file in the root directory */
+      {
+         char pattern_path[PATH_MAX_LENGTH];
+         fill_pathname_join_special(pattern_path, task_config->content_dir, task_config->file_patterns, sizeof(pattern_path));
+
+         if (path_is_valid(pattern_path))
+         {
+            union string_list_elem_attr attr;
+            attr.i = RARCH_PLAIN_FILE;
+            string_list_append(content_list, pattern_path, attr);
+         }
+      }
+
+      /* Sort the list */
+      if (content_list->size > 1)
+         dir_list_sort(content_list, true);
+
+      return content_list;
+   }
+
+   /* Default behavior */
    dir_list = dir_list_new(
          task_config->content_dir,
          filter_exts ? task_config->file_exts : NULL,
          false, /* include_dirs */
-         false, /* include_hidden */
+         show_hidden_files, /* include_hidden */
          include_compressed,
-         task_config->search_recursively
+         task_config->scan_depth > 0
    );
 
    /* Sanity check */
@@ -1205,27 +1333,118 @@ error:
    return false;
 }
 
+/* Extracts title from filename using glob pattern
+ * Assumes pattern has one *, and extracts the matching part */
+static bool extract_title_from_pattern(const char *pattern, const char *filename, char *title, size_t len)
+{
+   char *star_pos = strchr(pattern, '*');
+   if (!star_pos)
+   {
+      /* No *, use filename without extension */
+      fill_pathname(title, path_basename(filename), "", len);
+      return true;
+   }
+
+   /* Simple implementation: assume pattern like "prefix*suffix", extract between prefix and suffix */
+   char prefix[PATH_MAX_LENGTH];
+   char suffix[PATH_MAX_LENGTH];
+   size_t prefix_len = star_pos - pattern;
+   strlcpy(prefix, pattern, prefix_len + 1);
+   strlcpy(suffix, star_pos + 1, sizeof(suffix));
+
+   /* Find prefix in filename */
+   const char *start = strstr(filename, prefix);
+   if (!start)
+      return false;
+   start += strlen(prefix);
+
+   /* Find suffix after start */
+   const char *end = strstr(start, suffix);
+   if (!end)
+      return false;
+
+   /* Extract between */
+   size_t title_len = end - start;
+   if (title_len >= len)
+      title_len = len - 1;
+   strlcpy(title, start, title_len + 1);
+   return true;
+}
+
 /* Extracts content 'label' (name) from content path
  * > If a DAT file is specified, performs a lookup
  *   of content file name in an attempt to find a
  *   valid 'description' string.
  * Returns false if specified content is invalid. */
 static bool manual_content_scan_get_playlist_content_label(
+      manual_content_scan_task_config_t *task_config,
       const char *content_path, logiqx_dat_t *dat_file,
       bool filter_dat_content,
       char *s, size_t len)
 {
-   /* Sanity check */
-   if (string_is_empty(content_path))
-      return false;
+    /* Sanity check */
+    if (string_is_empty(content_path))
+       return false;
 
-   /* In most cases, content label is just the
-    * filename without extension */
-   fill_pathname(s, path_basename(content_path),
-         "", len);
+    /* Special case for pattern files */
+    if (!string_is_empty(task_config->file_patterns))
+    {
+       const char *basename = path_basename(content_path);
+       if (string_is_equal(basename, task_config->file_patterns))
+       {
+          if (!string_is_empty(task_config->title_pattern))
+          {
+             /* Use title extraction from filename */
+             if (extract_title_from_pattern(task_config->title_pattern, content_path, s, len))
+                return true;
+          }
+          else if (task_config->use_dirname_for_label)
+          {
+             /* Use directory name as label */
+             char parent_path[PATH_MAX_LENGTH];
+             strlcpy(parent_path, content_path, sizeof(parent_path));
+             char *last_slash = strrchr(parent_path, PATH_DEFAULT_SLASH_C());
+             if (last_slash)
+             {
+                *last_slash = '\0';
+                last_slash = strrchr(parent_path, PATH_DEFAULT_SLASH_C());
+                if (last_slash)
+                {
+                   strlcpy(s, last_slash + 1, len);
+                   return true;
+                }
+             }
+          }
+          return false;
+       }
+    }
 
-   if (string_is_empty(s))
-      return false;
+    /* Check if we should use directory name as label */
+    if (task_config->use_dirname_for_label)
+    {
+       /* Use directory name as label */
+       char parent_path[PATH_MAX_LENGTH];
+       strlcpy(parent_path, content_path, sizeof(parent_path));
+       char *last_slash = strrchr(parent_path, PATH_DEFAULT_SLASH_C());
+       if (last_slash)
+       {
+          *last_slash = '\0';
+          last_slash = strrchr(parent_path, PATH_DEFAULT_SLASH_C());
+          if (last_slash)
+          {
+             strlcpy(s, last_slash + 1, len);
+             return true;
+          }
+       }
+    }
+
+    /* In most cases, content label is just the
+     * filename without extension */
+    fill_pathname(s, path_basename(content_path),
+          "", len);
+
+    if (string_is_empty(s))
+       return false;
 
    /* Check if a DAT file has been specified */
    if (dat_file)
@@ -1289,7 +1508,7 @@ void manual_content_scan_add_content_to_playlist(
 
       /* Get entry label */
       if (!manual_content_scan_get_playlist_content_label(
-            playlist_content_path, dat_file,
+            task_config, playlist_content_path, dat_file,
             task_config->filter_dat_content,
             label, sizeof(label)))
          return;
